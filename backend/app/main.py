@@ -156,42 +156,6 @@ async def execute_code(request: Request):
         except httpx.RequestError:
             raise HTTPException(status_code=500, detail="Failed to connect to sandbox service")
 
-_TRUE_VALUES = {"1", "true", "yes", "on"}
-
-
-def _env_flag(name: str, default: bool) -> bool:
-    """Return a boolean value for environment variable ``name``."""
-
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    return value.lower() in _TRUE_VALUES
-
-
-def run(*, host: Optional[str] = None, port: Optional[int] = None, reload: Optional[bool] = None) -> None:
-    """Run the FastAPI application using Uvicorn.
-
-    Parameters
-    ----------
-    host:
-        Host interface for Uvicorn to bind to. Defaults to ``0.0.0.0`` or the
-        ``UVICORN_HOST`` environment variable if provided.
-    port:
-        TCP port for the HTTP server. Defaults to the ``PORT`` environment
-        variable or ``8000``.
-    reload:
-        Whether Uvicorn should start in auto-reload mode. Defaults to the value
-        of ``UVICORN_RELOAD`` and falls back to ``True`` for development.
-    """
-
-    import uvicorn
-
-    resolved_host = host or os.environ.get("UVICORN_HOST", "0.0.0.0")
-    resolved_port = port or int(os.environ.get("PORT", 8000))
-    resolved_reload = reload if reload is not None else _env_flag("UVICORN_RELOAD", True)
-
-    uvicorn.run(app, host=resolved_host, port=resolved_port, reload=resolved_reload)
-
 
 if __name__ == "__main__":
     run()
