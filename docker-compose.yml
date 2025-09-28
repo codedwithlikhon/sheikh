@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # Frontend Service - Vue 3 + TypeScript + Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
+      - VITE_SANDBOX_URL=http://localhost:8080
+    depends_on:
+      - backend
+      - sandbox
+    networks:
+      - sheikh-network
+    command: npm run dev -- --host 0.0.0.0
+
+  # Backend Service - FastAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=development
+      - DATABASE_URL=sqlite:///./sheikh.db
+      - REDIS_URL=redis://redis:6379
+      - SANDBOX_URL=http://sandbox:8080
+    depends_on:
+      - redis
+      - sandbox
+    networks:
+      - sheikh-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Sandbox Service - Secure Code Execution
+  sandbox:
+    build:
+      context: ./sandbox
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "5900:5900"  # VNC port
+      - "9222:9222"  # Chrome CDP port
+    volumes:
+      - ./sandbox:/app
+      - sandbox-workspace:/workspace
+    environment:
+      - NODE_ENV=development
+      - WORKSPACE_DIR=/workspace
+      - VNC_PASSWORD=sheikh123
+      - CHROME_DEBUG_PORT=9222
+    networks:
+      - sheikh-network
+    command: npm run dev
+
+  # Mock Server - For testing and development
+  mockserver:
+    build:
+      context: ./mockserver
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./mockserver:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    networks:
+      - sheikh-network
+    command: npm run dev
+
+  # Redis - For caching and session management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - sheikh-network
+    command: redis-server --appendonly yes
+
+  # PostgreSQL - For persistent data storage
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=sheikh
+      - POSTGRES_USER=sheikh
+      - POSTGRES_PASSWORD=sheikh123
+    networks:
+      - sheikh-network
+
+volumes:
+  redis-data:
+  postgres-data:
+  sandbox-workspace:
+
+networks:
+  sheikh-network:
+    driver: bridge
+

@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-code-bg text-code-text font-mono;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  #root {
+    height: 100vh;
+    width: 100vw;
+  }
+}
+
+@layer components {
+  .code-editor {
+    @apply bg-code-bg text-code-text;
+  }
+  
+  .sidebar {
+    @apply bg-code-sidebar border-r border-code-border;
+  }
+  
+  .button-primary {
+    @apply bg-code-accent hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors;
+  }
+  
+  .button-secondary {
+    @apply bg-code-border hover:bg-gray-600 text-code-text px-4 py-2 rounded transition-colors;
+  }
+  
+  .button-success {
+    @apply bg-code-success hover:bg-green-600 text-white px-4 py-2 rounded transition-colors;
+  }
+  
+  .button-danger {
+    @apply bg-code-error hover:bg-red-600 text-white px-4 py-2 rounded transition-colors;
+  }
+  
+  .input-field {
+    @apply bg-code-sidebar border border-code-border text-code-text px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-code-accent;
+  }
+  
+  .file-item {
+    @apply px-3 py-2 hover:bg-code-border cursor-pointer flex items-center gap-2;
+  }
+  
+  .file-item.active {
+    @apply bg-code-accent text-white;
+  }
+  
+  .console-output {
+    @apply bg-black text-green-400 p-4 font-mono text-sm overflow-auto;
+  }
+  
+  .error-output {
+    @apply bg-red-900 text-red-100 p-4 font-mono text-sm;
+  }
+}
