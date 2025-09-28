@@ -32,6 +32,7 @@ class SessionUpdate(BaseModel):
 
 class SessionResponse(SessionBase):
     """Schema for session response"""
+
     id: str
     user_id: Optional[str] = None
     created_at: datetime
@@ -39,7 +40,7 @@ class SessionResponse(SessionBase):
     is_active: bool
     total_messages: int = 0
     last_message_at: Optional[datetime] = None
-    events: List[Dict[str, Any]] = []
+    events: List[Dict[str, Any]] = Field(default_factory=list)
     
     class Config:
         from_attributes = True

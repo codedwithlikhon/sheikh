@@ -31,6 +31,7 @@ class Task(Base):
     
     # Relationships
     session = relationship("Session", back_populates="tasks")
+    executions = relationship("Execution", back_populates="task", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Task(id='{self.id}', title='{self.title}', status='{self.status}')>"
