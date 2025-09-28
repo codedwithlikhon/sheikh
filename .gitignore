@@ -32,7 +32,8 @@ venv.bak/
 # IDE
 .idea/
 .cursor/
-.vscode/
+.vscode/*
+!.vscode/sheikh.code-workspace
 *.swp
 *.swo
 .DS_Store
@@ -58,46 +59,54 @@ coverage.xml
 *.log
 logs/
 
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*_key
+*_secret
+*_token
+*_password
+secrets/
+credentials/
+config.json
+settings.json
+
+# Docker
+.docker/
+docker-compose.override.yml
+
 # Local development settings
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-
 # Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnp/
+.pnp.js
+.yarn/
+.yarnrc
+.npm/
+
+# Temporary files
+*.tmp
+*.temp
+.temp/
+tmp/
+temp/
+
+# OS specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 .pnpm-debug.log*
 .npm
 .yarn
