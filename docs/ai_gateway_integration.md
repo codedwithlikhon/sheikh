@@ -47,36 +47,97 @@ The frontend includes a WebSocket client utility for real-time AI interactions:
 
 ## Usage Examples
 
-See the `examples/cloudflare_headers_example.js` file for practical examples of using Cloudflare AI Gateway headers.
+### REST API Example
 
-## Header Glossary
+```javascript
+// Backend API call
+const response = await fetch('/api/v1/ai-gateway/providers/openai/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'gpt-4',
+    messages: [
+      { role: 'user', content: 'Hello, how can you help me?' }
+    ]
+  })
+});
 
-AI Gateway supports these headers to configure and customize API requests:
+const data = await response.json();
+console.log(data);
+```
 
-| Header | Description |
-|--------|-------------|
-| `cf-aig-backoff` | Customizes the backoff type for request retries. |
-| `cf-aig-cache-key` | Overrides the default cache key for precise cacheability control. |
-| `cf-aig-cache-status` | Status indicator showing if a request was served from cache. |
-| `cf-aig-cache-ttl` | Specifies the cache time-to-live for responses. |
-| `cf-aig-collect-log` | Bypasses the default log setting for the gateway. |
-| `cf-aig-custom-cost` | Allows customization of request cost for user-defined parameters. |
-| `cf-aig-event-id` | Unique identifier for tracing specific events through the system. |
-| `cf-aig-log-id` | Unique identifier for the specific log entry for feedback. |
-| `cf-aig-max-attempts` | Customizes the number of max attempts for request retries. |
-| `cf-aig-metadata` | Tags requests with user IDs or other identifiers for tracking. |
-| `cf-aig-request-timeout` | Triggers fallback provider based on response time (in milliseconds). |
-| `cf-aig-retry-delay` | Customizes the retry delay for request retries. |
-| `cf-aig-skip-cache` | Bypasses caching for a specific request. |
-| `cf-aig-step` | Identifies the processing step in the AI Gateway flow for debugging. |
+### WebSocket Example (Frontend)
 
-### Configuration Hierarchy
+```javascript
+import { createOpenAIRealtimeClient } from '../utils/AIGatewayClient';
 
-Settings in AI Gateway can be configured at three levels:
+// Create client
+const client = createOpenAIRealtimeClient({
+  onMessage: (data) => {
+    console.log('Received:', data);
+  },
+  onError: (error) => {
+    console.error('Error:', error);
+  }
+});
 
-1. **Provider-level headers**: Take precedence over all other configurations.
-2. **Request-level headers**: Apply if no provider-level headers are set.
-3. **Gateway-level settings**: Act as defaults if no headers are set at other levels.
+// Connect
+await client.connect();
+
+// Send message
+client.send({
+  type: "response.create",
+  response: {
+    modalities: ["text"],
+    instructions: "Tell me about AI Gateways"
+  }
+});
+
+// Disconnect when done
+client.disconnect();
+```
+
+## Supported Providers
+
+The integration supports the following AI providers through Cloudflare AI Gateway:
+
+- OpenAI
+- Google AI Studio
+- Cartesia
+- ElevenLabs
+- Fal AI
+
+## Advanced Configuration
+
+### Custom Headers
+
+For provider-specific requirements, you can add custom headers:
+
+```javascript
+// Backend
+const response = await aiGateway.request(
+  provider: 'openai',
+  endpoint: 'chat/completions',
+  data: requestBody,
+  headers: {
+    'OpenAI-Beta': 'assistants=v1'
+  }
+);
+```
+
+### WebSocket Protocols
+
+For browser environments, WebSocket protocols are used instead of headers:
+
+```javascript
+// Frontend
+const ws = new WebSocket(url, [
+  `cf-aig-authorization.${cloudflareToken}`,
+  `xi-api-key.${elevenLabsApiKey}`
+]);
+```
 
 ## Troubleshooting
 

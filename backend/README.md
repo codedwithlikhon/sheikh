@@ -1,5 +1,11 @@
-# Backend Service
+# Backend for AI Coding Agent
 
-This directory contains the backend service for the application. It is a FastAPI-based Python application responsible for handling business logic, API requests, and communication with the database and other services.
+This is the backend service for the web-based AI coding agent interface.
 
-The main application code is located in the `app/` directory. Tests for the backend can be found in the `tests/` directory.
+## Setup
+
+1. Install dependencies: `pip install -r requirements.txt`
+
+2. Run in development: `./dev.sh`
+
+3. Run in production: `./run.sh`

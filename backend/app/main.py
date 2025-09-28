@@ -1,116 +1,162 @@
-"""
-Sheikh Backend - Main FastAPI Application
-Action engine that goes beyond answers to execute tasks, automate workflows, and extend your human capabilities.
-"""
-
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, WebSocket, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from contextlib import asynccontextmanager
-import uvicorn
-import structlog
+from fastapi.responses import JSONResponse
+import httpx
+import uuid
+import json
+import os
+from typing import Dict, List, Optional
+import asyncio
 
-from app.core.config import settings
-from app.core.database import init_db
-from app.api.v1.api import api_router
-from app.core.middleware import LoggingMiddleware, RateLimitMiddleware
+# Import AI Gateway routes
+from .interfaces.api.ai_gateway_routes import router as ai_gateway_router
 
-# Configure structured logging
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer()
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
+app = FastAPI(title="Sheikh Backend API")
 
-logger = structlog.get_logger(__name__)
+# Include AI Gateway routes
+app.include_router(ai_gateway_router, prefix="/api/v1")
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan events"""
-    # Startup
-    logger.info("Starting Sheikh Backend API", version=settings.VERSION)
-    await init_db()
-    logger.info("Database initialized successfully")
-    
-    yield
-    
-    # Shutdown
-    logger.info("Shutting down Sheikh Backend API")
-
-
-# Create FastAPI application
-app = FastAPI(
-    title="Sheikh Backend API",
-    description="Action engine that goes beyond answers to execute tasks, automate workflows, and extend your human capabilities",
-    version=settings.VERSION,
-    docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
-    redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
-    openapi_url="/openapi.json" if settings.ENVIRONMENT == "development" else None,
-    lifespan=lifespan
-)
-
-# Add middleware
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=settings.ALLOWED_HOSTS
-)
+# In-memory session storage
+sessions = {}
+sandbox_url = os.environ.get("SANDBOX_URL", "http://localhost:8080")
 
-app.add_middleware(LoggingMiddleware)
-app.add_middleware(RateLimitMiddleware)
-
-# Include API routes
-app.include_router(api_router, prefix="/api/v1")
-
-
-@app.get("/")
-async def root():
-    """Root endpoint with API information"""
-    return {
-        "message": "Sheikh Backend API",
-        "description": "Action engine that goes beyond answers to execute tasks, automate workflows, and extend your human capabilities",
-        "version": settings.VERSION,
-        "environment": settings.ENVIRONMENT,
-        "docs_url": "/docs" if settings.ENVIRONMENT == "development" else None
-    }
-
-
-@app.get("/health")
+@app.get("/api/v1/health")
 async def health_check():
     """Health check endpoint"""
+    return {"status": "ok", "service": "sheikh-backend"}
+
+@app.put("/api/v1/sessions")
+async def create_session():
+    """Create a new conversation session"""
+    session_id = str(uuid.uuid4())
+    sessions[session_id] = {
+        "id": session_id,
+        "title": "New Session",
+        "events": [],
+        "created_at": asyncio.get_event_loop().time(),
+        "updated_at": asyncio.get_event_loop().time(),
+    }
+    return {"code": 0, "msg": "success", "data": {"session_id": session_id}}
+
+@app.get("/api/v1/sessions/{session_id}")
+async def get_session(session_id: str):
+    """Get session information including conversation history"""
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
     return {
-        "status": "healthy",
-        "version": settings.VERSION,
-        "environment": settings.ENVIRONMENT
+        "code": 0,
+        "msg": "success",
+        "data": sessions[session_id]
     }
 
+@app.get("/api/v1/sessions")
+async def list_sessions():
+    """Get list of all sessions"""
+    session_list = []
+    for session_id, session in sessions.items():
+        latest_message = ""
+        if session["events"]:
+            latest_message = session["events"][-1].get("content", "")
+
+        session_list.append({
+            "session_id": session_id,
+            "title": session["title"],
+            "latest_message": latest_message,
+            "latest_message_at": session["updated_at"],
+            "status": "active",
+            "unread_message_count": 0
+        })
+
+    return {"code": 0, "msg": "success", "data": {"sessions": session_list}}
+
+@app.delete("/api/v1/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a session"""
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    del sessions[session_id]
+    return {"code": 0, "msg": "success", "data": None}
+
+@app.post("/api/v1/sessions/{session_id}/stop")
+async def stop_session(session_id: str):
+    """Stop an active session"""
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Add logic to stop any active processes if needed
+
+    return {"code": 0, "msg": "success", "data": None}
+
+@app.post("/api/v1/sessions/{session_id}/chat")
+async def chat(session_id: str, request: Request):
+    """Send a message to the session and receive streaming response"""
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    data = await request.json()
+    message = data.get("message", "")
+    timestamp = data.get("timestamp", asyncio.get_event_loop().time())
+    event_id = data.get("event_id", str(uuid.uuid4()))
+
+    # Add user message to session history
+    sessions[session_id]["events"].append({
+        "id": event_id,
+        "role": "user",
+        "content": message,
+        "timestamp": timestamp
+    })
+
+    # Update session timestamp
+    sessions[session_id]["updated_at"] = asyncio.get_event_loop().time()
+
+    # In a real implementation, this would connect to an AI service
+    # For now, we'll just echo back a simple response
+    response_event_id = str(uuid.uuid4())
+    sessions[session_id]["events"].append({
+        "id": response_event_id,
+        "role": "assistant",
+        "content": f"Echo: {message}",
+        "timestamp": asyncio.get_event_loop().time()
+    })
+
+    return {
+        "code": 0,
+        "msg": "success",
+        "data": {
+            "event_id": response_event_id
+        }
+    }
+
+@app.post("/api/v1/sandbox/execute")
+async def execute_code(request: Request):
+    """Execute code in the sandbox environment"""
+    data = await request.json()
+    code = data.get("code", "")
+    language = data.get("language", "javascript")
+
+    # Forward the request to the sandbox service
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{sandbox_url}/execute",
+                json={"code": code, "language": language}
+            )
+            return response.json()
+        except httpx.RequestError:
+            raise HTTPException(status_code=500, detail="Failed to connect to sandbox service")
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.ENVIRONMENT == "development",
-        log_level="info"
-    )
-
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
