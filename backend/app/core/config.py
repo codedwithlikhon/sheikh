@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     # Monitoring
     ENABLE_METRICS: bool = True
     METRICS_PORT: int = 9090
+
+    # Tool execution
+    ENABLE_MCP_SERVICES: bool = False
     
     class Config:
         env_file = ".env"

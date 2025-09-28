@@ -3,6 +3,7 @@ Session model for Sheikh Backend
 """
 
 from sqlalchemy import Column, String, DateTime, Text, Boolean, Integer
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
 import uuid
@@ -25,6 +26,10 @@ class Session(Base):
     # Session metadata
     total_messages = Column(Integer, default=0)
     last_message_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    tasks = relationship("Task", back_populates="session", cascade="all, delete-orphan")
+    executions = relationship("Execution", back_populates="session", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Session(id='{self.id}', title='{self.title}', status='{self.status}')>"

@@ -22,13 +22,13 @@ class SessionService:
     async def create_session(self, session_data: SessionCreate) -> SessionResponse:
         """Create a new session"""
         try:
-            db_session = SessionModel(**session_data.dict())
+            db_session = SessionModel(**session_data.model_dump())
             self.db.add(db_session)
             self.db.commit()
             self.db.refresh(db_session)
             
             logger.info("Session created successfully", session_id=db_session.id)
-            return SessionResponse.from_orm(db_session)
+            return SessionResponse.model_validate(db_session)
         except Exception as e:
             self.db.rollback()
             logger.error("Failed to create session", error=str(e))
@@ -45,7 +45,7 @@ class SessionService:
             if not db_session:
                 return None
             
-            return SessionResponse.from_orm(db_session)
+            return SessionResponse.model_validate(db_session)
         except Exception as e:
             logger.error("Failed to get session", session_id=session_id, error=str(e))
             raise
@@ -57,7 +57,7 @@ class SessionService:
                 SessionModel.is_active == True
             ).order_by(desc(SessionModel.updated_at)).offset(skip).limit(limit).all()
             
-            return [SessionResponse.from_orm(session) for session in db_sessions]
+            return [SessionResponse.model_validate(session) for session in db_sessions]
         except Exception as e:
             logger.error("Failed to list sessions", error=str(e))
             raise
@@ -73,7 +73,7 @@ class SessionService:
             if not db_session:
                 return None
             
-            update_data = session_data.dict(exclude_unset=True)
+            update_data = session_data.model_dump(exclude_unset=True)
             for field, value in update_data.items():
                 setattr(db_session, field, value)
             
@@ -81,7 +81,7 @@ class SessionService:
             self.db.refresh(db_session)
             
             logger.info("Session updated successfully", session_id=session_id)
-            return SessionResponse.from_orm(db_session)
+            return SessionResponse.model_validate(db_session)
         except Exception as e:
             self.db.rollback()
             logger.error("Failed to update session", session_id=session_id, error=str(e))

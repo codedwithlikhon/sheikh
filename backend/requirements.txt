@@ -17,6 +17,7 @@ aioredis==2.0.1
 # HTTP client for external API calls
 httpx==0.25.2
 aiohttp==3.9.1
+sse-starlette==1.6.5
 
 # Authentication and security
 python-jose[cryptography]==3.3.0
